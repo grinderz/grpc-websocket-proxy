@@ -178,7 +178,13 @@ func (p *Proxy) proxy(w http.ResponseWriter, r *http.Request) {
 		p.logger.Warnln("error upgrading websocket:", err)
 		return
 	}
-	defer conn.Close()
+	defer func() {
+		conn.WriteMessage(
+			websocket.CloseMessage,
+			websocket.FormatCloseMessage(websocket.CloseNormalClosure,
+				""))
+		conn.Close()
+	}()
 
 	ctx, cancelFn := context.WithCancel(context.Background())
 	defer cancelFn()
@@ -189,6 +195,7 @@ func (p *Proxy) proxy(w http.ResponseWriter, r *http.Request) {
 		p.logger.Warnln("error preparing request:", err)
 		return
 	}
+
 	if swsp := r.Header.Get("Sec-WebSocket-Protocol"); swsp != "" {
 		request.Header.Set("Authorization", transformSubProtocolHeader(swsp))
 	}
